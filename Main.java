@@ -1,6 +1,9 @@
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.InputStream;
 import java.util.Random;
 
@@ -8,6 +11,8 @@ public class Main
 {
     public static void main(String[] args)
     {
+        Score score = new Score();
+
         // initialize JFrame
         JFrame mainFrame = new JFrame("Air Hockey");
         mainFrame.setBounds(0, 0, 405, 720);
@@ -28,9 +33,21 @@ public class Main
             backgroundLabel.setBounds(0, 0, 405, 720);
             gamePane.add(backgroundLabel, JLayeredPane.DEFAULT_LAYER);
 
+            // Score texts
+            JLabel highScore = new JLabel("HighScore: " + score.getHighScore());
+            highScore.setBounds(0,0, 200, 30);
+            highScore.setFont(new Font(Font.SERIF, Font.BOLD, 20));
+            gamePane.add(highScore, JLayeredPane.PALETTE_LAYER);
+
+            JLabel playerScore = new JLabel("Score: " + score.getScore());
+            playerScore.setBounds(280,0, 200, 30);
+            playerScore.setFont(new Font(Font.SERIF, Font.BOLD, 20));
+            gamePane.add(playerScore, JLayeredPane.PALETTE_LAYER);
+
             // Restart Btn
             JButton restartBtn = new JButton("🔄");
-            restartBtn.setBounds(405/2, 720/2, 50,50);
+            restartBtn.setFont(new Font(Font.SERIF, Font.PLAIN, 16));
+            restartBtn.setBounds(405/2 - 50/2, 720/2 - 50/2, 50,50);
             restartBtn.setEnabled(false);
             restartBtn.setVisible(false);
             restartBtn.setFocusPainted(false);
@@ -46,6 +63,26 @@ public class Main
             //paddleLabel.setBounds(0, 0, 200, 200);
             gamePane.add(paddleLabel, JLayeredPane.PALETTE_LAYER);
 
+
+            // Glow
+            inputStream = Main.class.getClassLoader().getResourceAsStream("glow.png");
+            ImageIcon glowIcon = new ImageIcon(inputStream.readAllBytes());
+            JLabel glowLabel = new JLabel(glowIcon);
+            glowLabel.setVisible(false);
+            gamePane.add(glowLabel, JLayeredPane.POPUP_LAYER);
+
+            // Glow Timer
+            Timer glowTimer = new Timer(200, new ActionListener()
+            {
+                @Override
+                public void actionPerformed(ActionEvent e)
+                {
+                    glowLabel.setVisible(false);
+                }
+            });
+            glowTimer.setRepeats(false);
+
+
             // Disc
             inputStream = Main.class.getClassLoader().getResourceAsStream("disc.png");
             ImageIcon discIcon = new ImageIcon(inputStream.readAllBytes());
@@ -56,33 +93,35 @@ public class Main
             discLabel.setBounds(disc.getX(), disc.getY(), 32, 32);
             gamePane.add(discLabel, JLayeredPane.PALETTE_LAYER);
 
+            Random random = new Random();
 
             restartBtn.addActionListener(new ActionListener()
             {
                 @Override
                 public void actionPerformed(ActionEvent e)
                 {
-                    Random random = new Random();
+                    highScore.setText("HighScore: " + score.getHighScore());
                     int direction = random.nextInt(0, 2);
                     if(direction == 0)
                     {
-                        disc.setXSpeed(5);
+                        disc.setXSpeed(3);
                     }
                     else
                     {
-                        disc.setXSpeed(-5);
+                        disc.setXSpeed(-3);
                     }
-                    disc.setXSpeed(5);
-                    disc.setYSpeed(-10);
-                    disc.setX(405/2);
-                    disc.setY(720/2);
+                    disc.setYSpeed(-7);
+                    disc.setX(405/2 - 32/2);
+                    disc.setY(720/2 - 50/2);
+
+                    score.reset();
                     restartBtn.setVisible(false);
                     restartBtn.setEnabled(false);
                 }
             });
 
             // Use a Timer to update the disc's position at regular intervals
-            Timer timer = new Timer(20, new ActionListener() {
+            Timer timer = new Timer(1, new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e)
                 {
@@ -91,13 +130,18 @@ public class Main
                         if((disc.getY() + 10 > paddle.getY() && disc.getY() < paddle.getY() + 20) && (disc.getX() + 32 > paddle.getX() && disc.getX() < paddle.getX() + 64))
                         {
                             disc.setYSpeed(disc.getYSpeed() * -1);
-                            disc.setXSpeed(disc.getXSpeed() + paddle.getSpeed() / 2);
+                            int speedDirection = random.nextInt(-1, 2);
+                            disc.setXSpeed(disc.getXSpeed() + (speedDirection * (paddle.getSpeed() / 3)));
                         }
                     }
                     else
                     {
-                        if(collisionHandler(disc, paddle))
+                        if(collisionHandler(disc, paddle, glowLabel, glowTimer, score))
                         {
+                            if(score.getScore() > score.getHighScore())
+                            {
+                                score.setHighScore(score.getScore());
+                            }
                             restartBtn.setEnabled(true);
                             restartBtn.setVisible(true);
                         }
@@ -105,13 +149,15 @@ public class Main
                     disc.setX(disc.getX() + disc.getXSpeed());
                     disc.setY(disc.getY() + disc.getYSpeed());
 
+                    playerScore.setText("Score: " + score.getScore());
+
                     discLabel.setBounds(disc.getX(), disc.getY(), 32, 32);
                     gamePane.repaint();
                 }
             });
             timer.start();
 
-            Timer paddleTimer = new Timer(20, new ActionListener()
+            Timer paddleTimer = new Timer(1, new ActionListener()
             {
                 @Override
                 public void actionPerformed(ActionEvent e)
@@ -130,6 +176,8 @@ public class Main
                 }
             });
             paddleTimer.start();
+
+
         }
         catch(Exception exception)
         {
@@ -137,29 +185,89 @@ public class Main
         }
 
 
+        mainFrame.addWindowListener(new WindowListener()
+        {
+            @Override
+            public void windowOpened(WindowEvent e)
+            {
+                // Do Nothing
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e)
+            {
+                score.writeHighScore();
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e)
+            {
+                // Do Nothing
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e)
+            {
+                // Do Nothing
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e)
+            {
+                // Do Nothing
+            }
+
+            @Override
+            public void windowActivated(WindowEvent e)
+            {
+                // Do Nothing
+            }
+
+            @Override
+            public void windowDeactivated(WindowEvent e)
+            {
+                // Do Nothing
+            }
+        });
+
         mainFrame.add(gamePane);
         mainFrame.setVisible(true);
     }
 
-    public static boolean collisionHandler(Disc disc, Paddle paddle)
+    public static boolean collisionHandler(Disc disc, Paddle paddle, JLabel glow, Timer glowTimer, Score score)
     {
         boolean lost = false;
         if(disc.getX() < 0)
         {
             disc.setXSpeed(disc.getXSpeed() * -1);
+            glow.setBounds(disc.getX() - 12, disc.getY(), 32, 32);
+            glow.setVisible(true);
+            glowTimer.restart();
+            score.incrementScore();
         }
         if(disc.getX() > (405 - 40))
         {
             disc.setXSpeed(disc.getXSpeed() * -1);
+            glow.setBounds(disc.getX() + 7, disc.getY(), 32, 32);
+            glow.setVisible(true);
+            glowTimer.restart();
+            score.incrementScore();
         }
 
         if(disc.getY() < 0)
         {
             disc.setYSpeed(disc.getYSpeed() * -1);
+            glow.setBounds(disc.getX(), disc.getY() - 10, 32, 32);
+            glow.setVisible(true);
+            glowTimer.restart();
+            score.incrementScore();
         }
         if(disc.getY() > (720 - 30))
         {
             lost = true;
+            disc.setXSpeed(0);
+            disc.setYSpeed(0);
+
         }
 
         return lost;

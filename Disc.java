@@ -17,13 +17,13 @@ public class Disc
         int direction = random.nextInt(0, 2);
         if(direction == 0)
         {
-            xSpeed = 5; // todo should change accordingly
+            xSpeed = 3; // todo should change accordingly
         }
         else
         {
-            xSpeed = -5; // todo should change accordingly
+            xSpeed = -3; // todo should change accordingly
         }
-        ySpeed = -10; // todo should change accordingly
+        ySpeed = -7; // todo should change accordingly
         img = pImg;
     }
 
